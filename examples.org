@@ -1,0 +1,962 @@
+# Retrieved from "http://en.wikibooks.org/wiki/Clojure_Programming/Examples/API_Examples"
+# Retrieved from "http://en.wikibooks.org/wiki/Clojure_Programming/FAQ"
+# Retrieved from "http://en.wikibooks.org/wiki/Clojure_Programming/Getting_Started"
+
+* ->
+  user=> (-> "abc" .toUpperCase ,, (.replace ,, "B" "-"))
+  "A-C"
+
+  is equivalent to:
+
+  user=> (.replace (.toUpperCase "abc") "B" "-")
+  "A-C"
+
+  NOTE: you do not need to insert ',,', since clojure treats them like whitespace, but marking the forms second position this way enhances readability.
+
+  However -> works on everything
+
+  user=> (-> true (if ,, inc dec) (map ,, [1 2 3]))
+  (2 3 4)
+
+  or expanded
+
+  (map (if true inc dec) [1 2 3])
+
+  So one can also use macros and normal functions in ->, ie. non-methods.
+
+  Here is an example that should make every devoted Programmer fall in love with lisp, if he compares it with equivalent Java code. Reading the name of the first entry in a zip file:
+
+  user=> (import '(java.net URL) '(java.util.zip ZipInputStream))
+  nil
+  user=> (-> "http://clojure.googlecode.com/files/clojure_20081217.zip" URL. .openStream ZipInputStream. .getNextEntry bean :name)
+  "clojure/"
+
+* accessor
+
+  user=> (defstruct employee :name :id)                                        
+  #'user/employee
+
+  user=> (def e (struct employee "John" 123))
+  #'user/e
+
+  user=> e
+  {:name "John", :id 123}
+
+  user=> ("name" e) ; FAIL: string not an accessor
+  java.lang.ClassCastException: java.lang.String cannot be cast to clojure.lang.IFn (NO_SOURCE_FILE:0)
+
+  user=> (:name e)                                                         
+  "John"
+
+  user=> (def employee-name (accessor employee :name))  ; bind accessor to e-name
+  #'user/employee-name
+
+  user=> (employee-name e) ; use accessor
+  "John"
+
+* assoc-in
+
+  (def nested-structure { :level 0, 
+  :nested1 { :level 1, 
+  :nested2 { :level 2, 
+  :final-data "initial data"}}}) 
+
+  user=> (assoc-in nested-structure [:nested1 :nested2 :final-data] "new data")
+  {:level 0, :nested1 {:nested2 {:level 2, :final-data "new data"}, :level 1}}
+
+* binding
+
+  user=> (def x 1)
+  #'user/x
+  user=> (def y 2)
+  #'user/y
+  user=> (def get-x-y (fn [] (list x y)))
+  #'user/get-x-y
+  user=> (get-x-y)
+  (1 2)
+  user=> (binding [x 100 y 200] (get-x-y))
+  (100 200)
+  user=> (get-x-y)
+  (1 2)
+
+* butlast
+
+  user=> (butlast "hello")
+  (\h \e \l \l)
+
+* commute
+
+  (def employee-records (ref #{}))
+  (dosync (commute employee-records conj "employee"))
+
+* conj
+
+  user=> (conj [1 2 3] 4)
+  [1 2 3 4]
+
+  user=> (conj '(:a :b :c) \d)
+  (\d :a :b :c)
+
+* concat
+
+  (defn poly-expand
+    poly-expand [points]
+    (loop [aa (first points) remaining (rest points) built (empty points)]
+      (if (empty? remaining)
+	(concat built [aa (first points)])
+	(recur (first remaining) (rest remaining)
+	       (concat built [aa (first remaining)])))))
+  (poly-expand '[a b c d])
+  -> [a b b c c d d a]
+
+* cond
+
+  (defn fib [n] 
+    (cond 
+      (== 0 n) 0 
+      (== 1 n) 1 
+      (< 1 n) (+ 
+	       (fib (- n 1)) 
+	       (fib (- n 2))))) 
+
+* def
+
+  (def *a* 10)
+
+* defmulti
+
+  (defmulti area :Shape)
+  (defn rect [wd ht] {:Shape :Rect :wd wd :ht ht})
+  (defn circle [radius] {:Shape :Circle :radius radius})
+  (defmethod area :Rect [r]
+    (* (:wd r) (:ht r)))
+  (defmethod area :Circle [c]
+    (* (. Math PI) (* (:radius c) (:radius c))))
+  (defmethod area :default [x] :oops)
+  (def r (rect 4 13))
+  (def c (circle 12))
+  (area r)
+  -> 52
+  (area c)
+  -> 452.3893421169302
+  (area {})
+  -> :oops
+
+* defmethod
+
+  (defmulti fib int) 
+  (defmethod fib 0 [_] 1) 
+  (defmethod fib 1 [_] 1) 
+  (defmethod fib :default [n] (+ (fib (- n 2)) (fib (- n 1)))) 
+  user=> (map fib (range 10)) 
+  (1 1 2 3 5 8 13 21 34 55) 
+
+* deref
+
+* @
+
+  (deref (ref 5))
+  @(ref 5)
+  @(atom 5)
+  (with-local-vars [x 5] @x)
+  @(agent 5)
+
+* delay
+
+* force
+
+  (def df (delay (println "hello")))
+  (println "world")
+  --> world
+  (force df)
+  --> hello
+
+* doseq
+
+  (doseq [i [1 2 3 4]] (print i))
+
+  ; This is an example of using destructuring to pair an index with each element of a seq.
+  (doseq [[index word] (map vector 
+			    (iterate inc 0) 
+			    ["one" "two" "three"])]
+    (prn (str index " " word)))
+
+* doall
+
+* dorun
+
+  user=> (doall (map #(println "hi" %) ["mum" "dad" "sister"]))
+
+  hi mum hi dad hi sister (nil nil nil)
+
+  user=> (dorun (map #(println "hi" %) ["mum" "dad" "sister"]))
+
+  hi mum hi dad hi sister nil
+
+* doto
+
+  (doto (new java.util.HashMap) (.put "a" 1) (.put "b" 2))
+  -> {a=1, b=2}
+
+  NB: doto returns the object after modification, which is very convenient. Consider in the above example no variable binding is required to access the resultant object.
+
+  (.addChild *scene-graph*
+	     (doto (KeyNavigatorBehavior.
+		    (-> *universe* .getViewingPlatform .getViewPlatformTransform))
+	       (setSchedulingBounds (BoundingSphere. (Point3d.) 10000.0))))
+
+  Here you can see it is much more readable using doto than the alternative which would be to create a temporary binding with let.
+
+* get
+
+  user=> (get {:a 1, :b 2} :a) 
+  1 
+  ;get also accepts an optional third argument,
+  ;which is returned if key is not found in map:
+  user=> (get {:a 1, :b 2} :e 0) 
+  0 
+  ;maps are functions of their keys, they delegate to get:
+  user=> ({:a 1, :b 2, :c 3} :a) 
+  1
+  ;and keys likewise
+  user=> (:b {:a 1, :b 2} 99)
+  2
+
+* interpose
+
+  user=> (apply str (interpose "|" ["hi" "mum" "and" "dad"]))
+  "hi|mum|and|dad"
+
+* interleave
+
+  user=> (interleave [1 2 3] [:a :b :c])
+  (1 :a 2 :b 3 :c)
+
+* str
+
+  user=> (str [1 2])
+  "[1 2]"
+  user=> (str 1 2)
+  "12"
+
+* apply
+
+  user=> (apply str [1 2])
+  "12"
+
+  (defn factorial [n] 
+    (apply * (range 2 (inc n)))) 
+
+* reverse
+
+  user=> (apply str (interpose " " (reverse (.split "I am cold" " "))))
+  "cold am I"
+
+* into-array
+
+  user=> (into-array [1 2 3])
+  #<Integer[] [Ljava.lang.Integer;@15fadcf>
+  user=> (into-array [1 2 "asd"])
+  java.lang.IllegalArgumentException: array element type mismatch (NO_SOURCE_FILE:0)
+  user=>
+
+* double-array
+
+  user=> (into-array (map double-array [[1.0] [2.0]])) 
+  #<double[][] [[D@1fa1bb6> 
+
+* filter
+
+  user=> (filter nil? [:a :b nil nil :a]) 
+  (nil nil)
+
+  user=> (filter (fn[x](= x :b)) [:a :b nil nil :a]) 
+  (:b)
+
+* remove
+
+  user=> (filter nil? [:a :b nil nil :a]) 
+  (:a :b :a)
+
+* genclass
+
+  expmeth/ClassA.java: 
+  package expmeth; 
+  public class ClassA { 
+    public void hello() { 
+      System.err.println("hello from Java!"); 
+    } 
+    public void hello(int x) { 
+      System.err.println("hello from Java " + x); 
+    } 
+  } 
+
+  expmeth/TestMe.clj: 
+  (ns expmeth.TestMe 
+    (:gen-class 
+     :extends expmeth.ClassA 
+     :exposes-methods {hello helloSuper})) 
+  (defn -hello 
+    ([this] 
+       (.helloSuper this) 
+       (println "hello from clojure!")) 
+    ([this x] 
+       (.helloSuper this x) 
+       (println "hello from clojure..." x))) 
+  testing: 
+  (.hello (expmeth.TestMe.) 17) 
+  (.hello (expmeth.TestMe.) )
+
+* loop
+
+  See recur
+
+* recur
+
+  ; compute the factorial of 5, establishes two 'variables' cnt and acc
+  ; cnt is decremented every call until it reaches 0
+  ; acc stores the result of multiplying each value cnt took
+  (loop [cnt 5,
+	 acc 1]
+    (if (zero? cnt)
+      acc
+      (recur (dec cnt) (* acc cnt))))
+
+* lazy-cons
+
+  (defn fib-seq []
+    ((fn rfib [a b] 
+       (lazy-cons a (rfib b (+ a b)))) 
+     0 1))
+  
+  user> (take 20 (fib-seq))
+  (0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610 987 1597 2584 4181)
+
+* fn
+
+  (map (fn [a] (str "hi " a)) ["mum" "dad" "sister"])
+  ; => ("hi mum" "hi dad" "hi sister")
+
+* #()
+
+  See the reader page, (Macro characters -> Dispatch -> Anonymous function literal) for an explanation of the '%' and other characters used to refer to function arguments.
+
+  user=> (map #(class %) [1 "asd"])      
+  (java.lang.Integer java.lang.String)
+  user=>
+
+* lambda
+
+  Use fn, or even better there is a custom syntax to create an anonymous function:
+
+  (map #(str "hi " %) ["mum" "dad" "sister"])
+
+* %
+
+  Represents an optional argument to an unnamed function:
+
+  #(+2 %)
+  #(+2 %1 %2)
+
+  Arguments in the body are determined by the presence of argument literals taking the form %, %n or %&. % is a synonym for %1, %n designates the nth arg (1-based), and %& designates a rest arg.
+
+* map
+
+  user=> (map + [1 2 3 4] [1 2 3 4])
+  (2 4 6 8)
+
+* memfn
+
+  (map (memfn charAt i) ["fred" "ethel" "lucy"] [1 2 3])
+  -> (\r \h \y)
+
+* ns
+
+  (ns test.test 
+    (:refer-clojure :exclude [+ -])) 
+  (defn + 
+    [a b] 
+    33) 
+  (+ 1 2) ;= 33 
+
+* proxy
+
+  (defn rev-vector-seq
+    [v]
+    (when (< 0 (count v))
+      (proxy [clojure.lang.ISeq] []
+	(seq   [] this)
+	(first [] (peek v))
+	(rest  [] (rev-vector-seq (pop v)))))) 
+
+  (doto (javax.swing.JFrame.)
+    (addKeyListener (proxy [java.awt.event.KeyListener] []
+		      (keyPressed [e] (println (.getKeyChar e) " key pressed"))
+		      (keyReleased [e] (println (.getKeyChar e) " key released"))
+		      (keyTyped [e] (println (.getKeyChar e) " key typed"))))
+    (setVisible true))
+
+* reduce
+
+  user=> (reduce * [2 3 4])
+  24
+  ; sum the odd numbers to 100
+  (reduce #(+ %1 (if (= 1 (rem %2 2)) %2 0)) (range 100)) 
+
+* ref
+
+  See ref-set for more.
+
+  user=> (def cross-thread-mutable (ref {}))
+  #'user/cross-thread-mutable
+  user=> cross-thread-mutable
+  #<Ref clojure.lang.Ref@1a5f739>
+  user=>
+
+* ref-set
+
+  user=> (def foo (ref 0)) 
+  #'user/foo 
+  user=> foo 
+  #<Ref clojure.lang.Ref@7c2479a4> 
+  user=> @foo 
+  0 
+  user=> (ref-set foo 1) 
+  java.lang.IllegalStateException: No transaction running (NO_SOURCE_FILE:0) 
+  user=> (dosync (ref-set foo 1)) 
+  1 
+  user=> @foo 
+  1 
+
+* rem
+
+  user=> (rem 5 2) 
+  1 
+
+* remove
+
+  The opposite of filter
+
+  (remove nil? [1 2 nil 3 false 4 5]) 
+  -> (1 2 3 false 4 5) 
+  (remove #{2 4} [1 2 nil 3 false 4 5]) 
+  -> (1 nil 3 false 5) 
+
+* replace
+
+  (replace {"ll" ""} "hello world") 
+
+* require
+
+  (require '[clojure.zip :as zip]) 
+
+* assoc
+
+  See struct-map for more.
+
+* defstruct
+
+  See struct-map for more.
+
+* struct
+
+  See struct-map for more.
+
+* struct-map
+
+  user=> (defstruct employee :name :id)
+  #'user/employee
+
+  user=> (struct employee "Mr. X" 10)
+  {:name "Mr. X", :id 10}
+
+  user=> (struct-map employee :id 20 :name "Mr. Y")
+  {:name "Mr. Y", :id 20}
+
+  user=> (def a (struct-map employee :id 20 :name "Mr. Y"))
+  #'user/a
+
+  user=> (def b (struct employee "Mr. X" 10))
+  #'user/b
+
+  user=> (:name a) ; observe that :name is an accessor
+  "Mr. Y"
+
+  user=> (:id b)   ; same with :id
+  10
+
+  user=> (b :id)
+  10
+
+  user=> (b :name)
+  "Mr. X"
+
+
+  user=> (assoc a :name "New Name")
+  {:name "New Name", :id 20}
+
+  user=> a                   ; note that 'a' is immutable and did not change
+  {:name "Mr. Y", :id 20}
+
+  user=> (def a1 (assoc a :name "Another New Name")) ; bind to a1
+  #'user/a1
+
+  user=> a1
+  {:name "Another New Name", :id 20}
+
+* test
+
+  user=> (defn
+	   #^{:test (fn []
+		      (assert (= 4 (myadd 2 2))))}
+	   myadd [a b]
+	   (+ a b))
+  #'user/myadd
+  user=> (test #'myadd)
+  :ok
+
+* union
+
+  user=> (clojure.set/union #{1 2 3} #{1 4 7})
+  #{1 2 3 4 7}
+
+* zippers
+
+  user=> (-> (zip/vector-zip [[1 2] 3 [[4 5] 7 8]])
+	     zip/down
+	     zip/right
+	     zip/right
+	     zip/down
+	     zip/down
+	     zip/right
+	     (zip/edit inc)
+	     zip/root)
+  [[1 2] 3 [[4 6] 7 8]] 
+
+* zipmap
+
+  user=> (let [ks [1 3 4]] (zipmap ks (map inc ks)))
+  {4 5, 3 4, 1 2}
+
+* What would you like to see in the FAQ?
+
+  * What versions of Java have been tested?
+  * What versions of Java are supported?
+
+* How do I declare a variable?
+
+  As a functional language, Clojure discourages the use of variables. If it takes more thought initially to construct solutions that don't need variables, please try to expend the effort - it will repay you many times over. eg:
+
+  int i;
+  int sum;
+  for (i=1;i<=100;i++,sum+=i);
+
+  Can be written without variables in Clojure as
+
+  (reduce + (range 100))
+
+  Clojure does support variables but you should read about them fully before using them to understand their semantics. If you are really stuck and want a quick solution, you can use def:
+
+  (def a 5)
+  (def a 6)
+
+  But this is not recommended and is only suggested as a workaround until you can more fully explore Clojure.
+
+* Why doesn't contains? do what I expect on vectors and lists
+
+  Sequential lookup is not an important operation. Clojure includes sets and maps, and if you are going to be looking things up you should be using them. contains? maps to java.util.Set.contains. The fact that java.util.Collection also has contains is, IMO, a mistake, as you really can't write code to an interface with dramatically varying performance characteristics. So, lookups in sets and maps take priority and get the best name - contains? People write naive programs that do linear lookups with contains() in other languages, and get correspondingly bad n-squared performance - that's not an argument for encouraging that in Clojure. If they get an explanation of why it's a bad idea, and how to use sets and maps, that's fine.
+
+* Getting Started
+
+  This page walks you though several tasks for installing Clojure. You'll goes through the following steps.
+
+  1. Install clojure either by downloading a prebuilt jar, or from the source
+  2. Install several standard enhancements to clojure, such as making the REPL easier to use and creating a script to load the classpath for you
+  3. Configure clojure for use with either emacs or vim
+
+  Once these steps are done, you'll be ready to get coding.
+
+** Installation
+
+   Closure is based on Java, so make sure that you have a current (1.5 or later) JVM installed.
+
+** Installing a JAR
+
+   The easiest way to start with clojure is to download the zip file available here: http://code.google.com/p/clojure/downloads/list. However, Clojure is under active development, and you may want to download and build from source.
+
+** Installation from Source
+
+   You need Subversion (svn) to download the latest source code. To compile you need the Java Development Kit (javac) and either Maven (mvn) or Ant (ant). The examples below use mvn to run the build, but ant may be used in its place.
+
+   You can download the latest code using:
+
+   svn co http://clojure.googlecode.com/svn/trunk clojure
+
+   Then to compile:
+
+   cd clojure
+   ant
+
+   Then to start a clojure REPL:
+
+   java -cp clojure.jar clojure.lang.Repl
+
+   Press Ctrl+C to get out of it.
+
+** Enhancing the Environment
+
+   In this section we explain how to install some standard enhancements to clojure. You can either use rlwrap or JLine with the Clojure REPL to get functionality, like being able to press the up arrow to retrieve the previous command.
+
+*** Enhancing Clojure REPL with JLine
+
+    Download JLine and copy the jar into the clojure directory. Then you can run:
+
+    java -cp jline-VERSION.jar:clojure.jar jline.ConsoleRunner clojure.lang.Repl
+
+    If you are on Ubuntu, you can install the JLine library like so:
+
+    sudo apt-get install libjline-java libjline-java-doc
+
+    Run 'dpkg -L libline-java' to check the name of the library. On Ubuntu 8.0.4 you'll see something like this:
+
+    $ dpkg -L libjline-java
+    /.
+    /usr/share/java
+    /usr/share/java/jline-VERSION.jar
+
+    Then run:
+
+    java -cp /usr/share/java/jline-VERSION.jar:clojure.jar jline.ConsoleRunner clojure.lang.Repl
+
+    If you want to run a script from the command line:
+
+    echo "(println \"Hello, World\")" > hello-world.clj
+    java -cp clojure.jar clojure.lang.Script hello-world.clj
+
+    The clojure.lang.Repl startup method also supports script arguments. This differs from clojure.lang.Script startup in that scripts are loaded in the user namespace and Clojure enters the REPL instead of exiting after the scripts are loaded.
+
+*** Create clj Script
+
+    A clj script is a convenient script to launch you clojure applications. Each of the recipes below depends on the jline library being installed.
+
+**** Linux
+
+     For Linux users, here's a bash script http://paulbarry.com/articles/2007/12/22/getting-started-with-clojure that will make using Clojure from the command line a little less verbose:
+     
+     #!/bin/bash 
+     CLOJURE_DIR=/path/to/clojure
+     CLOJURE_JAR=$CLOJURE_DIR/clojure.jar
+     if [ -z "$1" ]; then 
+	 java -cp $CLOJURE_DIR/jline-VERSION.jar:$CLOJURE_JAR \
+	     jline.ConsoleRunner clojure.lang.Repl    
+     else
+	 java -cp $CLOJURE_JAR clojure.lang.Script $1 -- $*
+     fi
+     
+     Put this in a file named "clj" and make it executable.
+
+     If your .clj script(s) will take command line arguments (*command-line-args*), there is a slight modiffication to the script:
+
+     #!/bin/bash
+ 
+     CLOJURE_DIR=/path/to/clojure
+     CLOJURE_JAR=$CLOJURE_DIR/clojure.jar
+     if [ -z "$1" ]; then 
+	 java -cp $CLOJURE_DIR/jline-VERSION.jar:$CLOJURE_JAR \
+	     jline.ConsoleRunner clojure.lang.Repl    
+     else
+	 scriptname=$1
+	 java -cp $CLOJURE_JAR clojure.lang.Script $scriptname -- $*
+     fi
+
+**** Windows
+
+     For Windows users, here's the equivalent BATCH file:
+
+     @echo off
+     set CLOJURE_DIR=path\to\clojure
+     set CLOJURE_JAR=%CLOJURE_DIR%\svn\clojure\clojure.jar
+     IF (%1)==() (
+        java -cp %CLOJURE_DIR%\jline-VERSION.jar;%CLOJURE_JAR% jline.ConsoleRunner clojure.lang.Repl
+     ) ELSE (
+        java -cp %CLOJURE_JAR% clojure.lang.Script %1 -- %*
+     )
+
+     Put this in a file named clj.bat.
+
+     After adding the location of the script to your path, you can either run a script:
+
+     clj hello-world.clj
+
+     or invoke the REPL:
+
+     clj
+
+*** Enhancing Clojure REPL with rlwrap
+
+    To enhance the clojure REPL under Unix variants, one very useful utility is rlwrap http://utopia.knoware.nl/~hlub/rlwrap .
+
+    It adds the following features to the Clojure interactive shell.
+
+    1. Tab Completion
+    2. Parenthesis matching
+    3. History across Clojure sessions
+    4. Vi or Emacs binding based on your readline .inputrc http://tiswww.case.edu/php/chet/readline/readline.html#SEC9 settings
+
+    As a first step build and install rlwrap. It might also be available as a part of you package repository for your GNU/Linux distribution. Ensure that rlwrap version 0.30 or above is in your path (previous versions have issues with multiline prompts).
+
+    [cljuser:~]% rlwrap -v
+    rlwrap 0.30
+    [cljuser:~]%
+
+
+    Save the following bash script as clj and add it to your path after making it executable:
+
+    #!/bin/bash
+ 
+    BREAK_CHARS="(){}[],^%$#@\"\";:''|\\"
+    CLOJURE_DIR=/home/cljuser/install/clojure
+    CLOJURE_JAR=$CLOJURE_DIR/clojure.jar
+    if [ $# -eq 0 ]; then 
+        rlwrap --remember -c -b $BREAK_CHARS -f $HOME/.clj_completions \
+            java -cp $CLOJURE_JAR clojure.lang.Repl
+    else
+        java -cp $CLOJURE_JAR clojure.lang.Script $1 -- $@
+    fi
+
+    Note that this script uses rlwrap and not JLine. The file ~/.clj_completions is the file rlwrap will use for providing tab completions.
+
+    Also, note that the file clojure.jar in the script should refer to whatever is the name of the jar built but either ant or maven. Ant builds clojure.jar. Similarly update cljuser in the script to be the username.
+
+    The following Clojure program can be used to generate this file:
+
+    (def completions (keys (ns-publics (find-ns 'clojure.core))))
+ 
+    (with-open [f (java.io.BufferedWriter. (java.io.FileWriter. (str (System/getenv "HOME") "/.clj_completions")))]
+      (.write f (apply str (interleave completions (repeat "\n")))))
+
+    To generate completions for all the standard clojure namespaces (not just 'closure), substitute the first line of that code with the following definition.
+
+    (def completions
+	 (reduce concat (map (fn [p] (keys (ns-publics (find-ns p))))
+			     '(clojure.core clojure.set clojure.xml clojure.zip))))
+
+    At this point you are good to go. Here are the settings from ~/.inputrc:
+
+    set editing-mode vi
+    tab: complete
+    set completion-ignore-case on
+    set blink-matching-paren on
+
+    For the Vi key bindings, the user can use % for jumping to matching parenthesis in the interactive shell. For Emacs bindings the key is ????.
+
+    Invoke the REPL as clj
+
+    [cljuser:~]% clj
+    Clojure
+    user=> (de --> tab
+    Desktop/      defmethod     defstruct     deref
+    dec           defmulti      delay         derive
+    definline     defn          delay?        descendants
+    defmacro      defn-         destructure
+    user=> (def --> tab
+    definline  defmacro   defmethod  defmulti   defn       defn-      defstruct
+    user=> (take- --> tab
+    take-nth    take-while
+    user=> (take-
+
+    This REPL also remembers the symbols created by you:
+    
+    [cljuser:~]% clj
+    Clojure
+    user=> (def foo 10)
+    #'user/foo
+    user=> (def foobar 20)
+    #'user/foobar
+    user=> (def foo-next 30)
+    #'user/foo-next
+    user=> (fo --> tab
+    foo       foo-next  foobar    for       force
+    user=> (fo
+
+    Happy REPLing!
+
+*** User settings
+
+    clojure.lang.Repl will run all the files listed before it goes to the prompt. So I have my clj script updated to accept a .cljrc.clj file that has my settings.
+
+    (set! *print-length* 50)
+    (set! *print-level* 10) 
+
+*** Installing clojure.contrib
+
+    Closure contrib is a common library for closure. Several projects depend on it, so it should be on of the first things you install. It is currently only available in source form, so check it out as follows
+
+    svn checkout http://clojure-contrib.googlecode.com/svn/trunk/ clojure-contrib-read-only
+
+    Use ant to build, not maven (just type ant in the trunk subdirectory). Add clojure-contrib.jar from that trunk directory to the classpath in your startup script:
+
+    java -cp $CLOJURE_JAR:$CONTRIB_JAR clojure.lang.Repl
+
+    Or skip building the clojure-contrib.jar and add clojure-contrib/src to your classpath instead.
+
+** Editors/IDEs
+
+*** Emacs / inferior-lisp
+
+    After installing Clojure, there is a 'clojure-mode' emacs mode available by Lennart Staflin http://www.lysator.liu.se/~lenst/darcs/clojure-mode/clojure-mode.el (and an enhanced version by Jeffrey Chu http://clojure.codestuffs.com/). Place that within your load-path. By default, M-: load-path will give you the full load path. Then, in your ~/.emacs or ~/.xemacs/init.el file, add the following, with paths changed to match your computer.
+
+    (setq inferior-lisp-program
+                                        ; Path to java implementation
+	  (let* ((java-path "java")
+                                        ; Extra command-line options
+                                        ; to java.
+                                        ; On OS X, -server is not default, so put it here.
+		 (java-options "")
+                                        ; Base directory to Clojure.
+                                        ; Change this accordingly.
+		 (clojure-path "/home/me/src/clojure/")
+                                        ; The character between
+                                        ; elements of your classpath.
+		 (class-path-delimiter ";")
+		 (class-path (mapconcat (lambda (s) s)
+                                        ; Add other paths to this list
+                                        ; if you want to have other
+                                        ; things in your classpath.
+					(list (concat clojure-path "clojure.jar"))
+					class-path-delimiter)))
+		(concat java-path
+			" " java-options
+			" -cp " class-path
+			" clojure.lang.Repl")))
+ 
+    ;; Require clojure-mode to load and associate it to all .clj files.
+    (setq load-path (cons "insert path to folder with clojure-mode stuff" load-path))
+    (require 'clojure-mode)
+    (setq auto-mode-alist
+	  (cons '("\\.clj$" . clojure-mode)
+		auto-mode-alist))
+ 
+    ;; These are extra key defines because I kept typing them.  
+    ;; Within clojure-mode, have Ctrl-x Ctrl-e evaluate the last 
+    ;; expression.
+    ;; Ctrl-c Ctrl-e is also there, because I kept typoing it.
+    (add-hook 'clojure-mode-hook
+	      '(lambda ()
+		       (define-key clojure-mode-map "\C-c\C-e" 'lisp-eval-last-sexp)
+		       (define-key clojure-mode-map "\C-x\C-e" 'lisp-eval-last-sexp)))
+
+    With that, opening a .clj file will launch clojure mode. After that, M-x run-lisp launches the inferior lisp. It may be easiest to run it in a separate frame (what the rest of us call windows, available with C-x 5 2) or in a separate buffer in the same frame (via C-x 2, switch between windows using C-x o)
+
+    M-C-x will send whatever expression the point is in to the lisp buffer, with the key defines above, C-x C-e will send the previous expression to the lisp buffer and (lisp-eval-region (point-min) (point-max)) entered at the M-: eval prompt will send the entire working buffer to the lisp buffer, useful when you've made a bunch of changes and don't want to reload them individually. M-p cycles through the repl entry history.
+
+    Note to GNU Emacs users on Windows: If the absolute file name of the directory containing clojure.jar has spaces, an easy workaround is to set the inferior-lisp-program variable to the name of a batch file that starts the REPL. Just ensure that the batch file doesn't launch the REPL using the jline.ConsoleRunner.
+
+*** Emacs / Slime Integration
+
+    Clojure can be integrated with Slime http://common-lisp.net/project/slime (unofficial Slime git repo: http://github.com/nablaone/slime/commits/master). Download clojure-mode http://github.com/jochu/clojure-mode/tree/master and swank-clojure http://github.com/jochu/swank-clojure/tree/master and put the following configuration in your .emacs file:
+
+    ;; Clojure mode
+    (add-to-list 'load-path "/path/to/jochu-clojure-mode-folder")
+    (require 'clojure-auto)
+    ;; (require 'clojure-paredit) ; Uncomment if you use Paredit
+    
+    ;; Slime
+    (add-to-list 'load-path "/path/to/slime/") 
+    (require 'slime)
+    (slime-setup)
+    
+    ;; clojure swank
+    (setq swank-clojure-jar-path "/path/to/clojure/target/clojure-lang-1.0-SNAPSHOT.jar")
+					;alternatively, you can set up the clojure wrapper script and use that: 
+					;(setq swank-clojure-binary "/path/to/cljwrapper")
+    
+					; you can also set up extra classpaths, such as the classes/ directory used by AOT compilation
+					;(setq swank-clojure-extra-classpaths (list "/path/to/extra/classpaths" "/even/more/classpaths"))
+    
+    (add-to-list 'load-path "/path/to/jochu-swank-clojure")
+    (require 'swank-clojure-autoload)
+    
+    ;; is this required? I don't have this in my emacs configuration; I just execute M-x slime to start slime -- Chousuke 
+    (defun run-clojure ()
+      "Starts clojure in Slime"
+      (interactive)
+      (slime 'clojure))
+    
+    ;; To use other Lisps...
+    ;; Incidentally, you can then choose different Lisps with
+    ;;   M-- M-x slime <tab>
+    ;; (add-to-list 'slime-lisp-implementations
+    ;;             '(sbcl   ("/path/to/bin/sbcl")))
+
+    A more complete Clojure/Slime setup is described in this blog post http://bc.tech.coop/blog/081205.html .
+
+*** Emacs tab completion
+
+    This trick was found somewhere on the internet. add after clojure configuration is done
+
+    (defun indent-or-expand (arg)
+      "Either indent according to mode, or expand the word preceding point."
+      (interactive "*P")
+      (if (and
+	   (or (bobp) (= ?w (char-syntax (char-before))))
+	   (or (eobp) (not (= ?w (char-syntax (char-after))))))
+	(dabbrev-expand arg)
+	(indent-according-to-mode)))
+ 
+    (defun my-tab-fix ()
+      (local-set-key [tab] 'indent-or-expand))
+ 
+    ;; add hooks for modes you want to use the tab completion for:
+    (add-hook 'c-mode-hook          'my-tab-fix)
+    (add-hook 'sh-mode-hook         'my-tab-fix)
+    (add-hook 'emacs-lisp-mode-hook 'my-tab-fix)
+    (add-hook 'clojure-mode-hook    'my-tab-fix)
+
+*** Emacs / Slime / Clojure on Ubuntu - Tutorial
+
+    A detailed tutorial for installing clojure, emacs and slime on Ubuntu is available here: http://riddell.us/clojure
+
+*** Vim
+
+    The state of the art in using Vim to edit Clojure code is the Gorilla http://kotka.de/projects/clojure/gorilla.html plugin (which depends on the VimClojure http://kotka.de/projects/clojure/vimclojure.html plugin, and on having a Ruby-enabled Vim (A Windows build of vim including Ruby support can be found here: http://wyw.dcweb.cn/#download)).
+
+    With Gorilla and VimClojure set up, you have:
+
+    * syntax highlighting (including rainbow parens) and indenting
+    * a REPL buffer inside Vim (with command history, highlighting and indenting)
+    * the ability to evaluate code from your program
+    * documentation lookup, omni-completion, and more
+
+    Gorilla is in active development (particularly to remove the Ruby dependency), but is very stable and useful.
+
+    Both VimClojure and Gorilla were created by, and are maintained by, Meikel Brandmeyer.
+
+    Some notes on these plugins:
+
+    * Two (out of date) screencasts can be viewed: VimClojure http://www.youtube.com/watch?v=rqweCwAMan0&fmt=18 and Gorilla http://www.screencast-o-matic.com/watch/cjXn2Nnog .
+    * Installation instructions are included at the plugin pages. Note that Gorilla comes with a file gorilla.jar that needs to be in your classpath when you run Gorilla.
+    * The way to use Gorilla is this: run it (so that a REPL server is in operation), then open a Clojure file in Vim. \sr will start a REPL buffer; \et will evaluate the expression under the cursor; see :help gorilla.txt for more.
+
+**** Completions
+
+     If you are using the VimClojure plugin from the previous section, Ctrl-N completions should work for you out of the box and you don't really need to bother with this section.
+
+     However, if you are using the bleeding edge Clojure from the sources, there may be some additions / changes to the API. If this is the case, you would need to generate an updated list of completions for Clojure. This can be created using the Clojure script from section "Enhancing_Clojure_REPL_with_rlwrap". Once generated this completions file may be linked into your VimClojure plugin or you could update your .vimrc. Note that the completions generator script is already available as a part of the VimClojure plugin.
+
+     Once you have the file ~/.clj_completions add the following line to your ~/.vimrc.
+
+     au Bufenter,Bufnewfile *.clj setl complete+=k~/.clj_completions
+
+     With this setting you should be able to use Ctrl+N in insert mode to see possible completions. For example, takeCtrl+N will show take-while, take-nth and take in a drop-down list.
+
+**** Other ways to communicate with a REPL from Vim
+
+     If you are unwilling or unable to run Gorilla, there are two other ways you can access a Clojure REPL from Vim.
+
+     Chimp http://www.vim.org/scripts/script.php?script_id=2348 is the precursor to Gorilla. It uses screen http://en.wikipedia.org/wiki/GNU_Screen to send text to a running REPL. It is far less convenient that Gorilla, but better than nothing.
+     
+     This article http://technotales.wordpress.com/2007/10/03/like-slime-for-vim/ describes exactly the same basic idea as Chimp, but is a more lightweight plugin.
+
+     As these two approaches rely on Screen, they are essentially available on Unix-like (including Cygwin) systems only.
+
